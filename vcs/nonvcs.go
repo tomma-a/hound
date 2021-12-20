@@ -3,7 +3,7 @@ package vcs
 import (
 	"encoding/json"
 	"log"
-	//"os/exec"
+	"os/exec"
 	"os"
 )
 
@@ -40,10 +40,20 @@ func (g *NonVcsDriver) Pull(dir string) (string, error) {
 
 
 func (g *NonVcsDriver) Clone(dir, url string) (string, error) {
-	os.Symlink(url,dir)
-	log.Printf("clone nonvcs")
-	//cmd :=exec.Command("cp", "-R",url,dir)
-	//cmd.Run()
+	if g.symbol_link  {
+		err :=os.Symlink(url,dir)
+		if err !=nil  {
+			log.Printf(" symbol link error %v\n",err)
+			return "",err
+		}
+	} else {
+	cmd :=exec.Command("cp", "-R",url,dir)
+	err :=cmd.Run()
+		if err !=nil  {
+			log.Printf(" cp error %v\n",err)
+			return "",err
+		}
+	}
 	return g.Pull(dir)
 }
 
