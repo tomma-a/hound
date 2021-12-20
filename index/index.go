@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -362,21 +363,29 @@ func indexAllFiles(opt *IndexOptions, dst, src string) error {
 	defer ix.Close()
 
 	excluded := []*ExcludedFile{}
-
 	// Make a file to store the excluded files for this repo
 	fileHandle, err := os.Create(filepath.Join(dst, "excluded_files.json"))
 	if err != nil {
 		return err
 	}
 	defer fileHandle.Close()
-
+	fileinfo, err :=os.Lstat(src)
+	if err != nil {
+		return err
+	}
+	if fileinfo.Mode() & fs.ModeSymlink == fs.ModeSymlink {
+		tmp,err :=os.Readlink(src)
+		if err != nil {
+			return err
+		}
+		src=tmp
+	}
 	if err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {  //nolint
 		name := info.Name()
 		rel, err := filepath.Rel(src, path)
 		if err != nil {
 			return err
 		}
-
 		// Is this file considered "special", this means it's not even a part
 		// of the source repository (like .git or .svn).
 		if containsString(opt.SpecialFiles, name) {
