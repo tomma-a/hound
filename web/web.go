@@ -3,14 +3,19 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"io/fs"
+	"path"
+	 "io/ioutil"
+	 "strings"
 	"sync"
-
+	 "embed"
 	"github.com/hound-search/hound/api"
 	"github.com/hound-search/hound/config"
 	"github.com/hound-search/hound/searcher"
 	"github.com/hound-search/hound/ui"
 )
-
+//go:embed prism
+var  embededFiles embed.FS
 // Server is an HTTP server that handles all
 // http traffic for hound. It is able to serve
 // some traffic before indexes are built and
@@ -66,6 +71,85 @@ func Start(cfg *config.Config, addr string, dev bool) *Server {
 
 	return s
 }
+type  PrismFile struct {
+	 *strings.Reader
+	 f http.File
+	 prelen int
+}
+const gpre string="<html><head><link href=\"/prism/prism.css\" rel=\"stylesheet\"/></head><body><pre><code class=\"language-%s\">"
+const gpost string="</code></pre><script src=\"/prism/prism.js\"></script></body></html>"
+func NewPrismFile(f http.File) (pr *PrismFile) {
+	finfo,_:=f.Stat()
+	if finfo.IsDir() {
+	pr=&PrismFile {
+	     f: f,
+	     Reader: nil,
+     }
+     } else {
+	     bs,_:=ioutil.ReadAll(f)
+	     suff:=path.Ext(finfo.Name())
+	     if len(suff)>1 {
+		     suff=suff[1:]
+	     }
+	     tpre:=fmt.Sprintf(gpre,suff)
+
+	     ss:=tpre+string(bs)+gpost
+	pr=&PrismFile {
+		f: f,
+		prelen: len(tpre),
+		Reader: strings.NewReader(ss),
+	}
+     }
+     return 
+
+}
+func (pp *PrismFile) Close()(err error) {
+	 pp.f.Close()
+	  err=nil
+	  return
+	}
+
+func (pp *PrismFile) Readdir(n int)(fis []fs.FileInfo, err error) {
+	  fis,err=pp.f.Readdir(n)
+	  return
+}
+type  PrismFileInfo struct  {
+	fs.FileInfo
+	prelen int
+}
+func  (info PrismFileInfo) Name() string {
+	 return "tmp.html"
+}
+func  (info PrismFileInfo) Size() int64 {
+	return info.FileInfo.Size()+int64(info.prelen)+int64(len(gpost))
+}
+func (pp *PrismFile) Stat()(fs.FileInfo, error) {
+	     fis,err:=pp.f.Stat()
+	     return  PrismFileInfo{FileInfo:fis, prelen:pp.prelen},err
+}
+func (pp PrismFile) Read(p []byte)(n int,err error) {
+	n,err=pp.Reader.Read(p)
+	return
+}
+func (pp PrismFile) Seek(offset int64,whence int) (n int64,err error) {
+	n,err=pp.Reader.Seek(offset,whence)
+	return
+}
+func (pp PrismFile) ReadAt(b []byte,off int64) (n int,err error) {
+	n,err=pp.Reader.ReadAt(b,off)
+	return
+}
+type  PrismFileSystem  struct {
+	http.FileSystem
+}
+func (fsys  *PrismFileSystem)  Open(name string) (http.File, error)  {
+
+		 file,err :=fsys.FileSystem.Open(name)
+		 if err != nil {
+			 return nil,err
+		 }
+		 return  NewPrismFile(file),err
+}
 
 // ServeWithIndex allow the server to start offering the search UI and the
 // search APIs operating on the given indexes.
@@ -74,10 +158,19 @@ func (s *Server) ServeWithIndex(idx map[string]*searcher.Searcher) error {
 	if err != nil {
 		return err
 	}
-
 	m := http.NewServeMux()
 	m.Handle("/", h)
 	api.Setup(m, idx)
+	embed1,err :=fs.Sub(embededFiles,"prism")
+	if err != nil {
+		return err
+	}
+	m.Handle("/prism/",http.StripPrefix("/prism/",http.FileServer(http.FS(embed1))))
+	for k,v :=range idx {
+		if v.Path!="" {
+		m.Handle("/nonvcs/"+k+"/",http.StripPrefix("/nonvcs/"+k+"/",http.FileServer(&PrismFileSystem {http.Dir(v.Path)})))
+		}
+	}
 
 	s.serveWith(m)
 

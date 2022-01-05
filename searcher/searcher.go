@@ -22,6 +22,7 @@ type Searcher struct {
 	idx  *index.Index
 	lck  sync.RWMutex
 	Repo *config.Repo
+	Path string
 
 	// The channel is used to request updates from the API and
 	// to signal that it is ok for searchers to begin polling.
@@ -443,8 +444,11 @@ func newSearcher(
 		Repo:       repo,
 		doneCh:     make(chan empty),
 		shutdownCh: make(chan empty, 1),
+		Path: "",
 	}
-
+	if repo.Vcs=="nonvcs" {
+		s.Path=vcsDir
+	}
 	go func() {
 
 		// each searcher's poller is held until begin is called.
