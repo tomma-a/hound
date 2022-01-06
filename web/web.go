@@ -76,7 +76,7 @@ type  PrismFile struct {
 	 f http.File
 	 prelen int
 }
-const gpre string="<html><head><link href=\"/prism/prism.css\" rel=\"stylesheet\"/></head><body><pre><code class=\"language-%s\">"
+const gpre string="<html><head><link href=\"/prism/prism.css\" rel=\"stylesheet\"/></head><body class=\"line-numbers\"><pre><code class=\"language-%s\">"
 const gpost string="</code></pre><script src=\"/prism/prism.js\"></script></body></html>"
 func NewPrismFile(f http.File) (pr *PrismFile) {
 	finfo,_:=f.Stat()
