@@ -74,7 +74,7 @@ func Start(cfg *config.Config, addr string, dev bool) *Server {
 type  PrismFile struct {
 	 *strings.Reader
 	 f http.File
-	 prelen int
+	 totallen int64
 }
 const gpre string="<html><head><link href=\"/prism/prism.css\" rel=\"stylesheet\"/></head><body class=\"line-numbers\"><pre><code class=\"language-%s\">"
 const gpost string="</code></pre><script src=\"/prism/prism.js\"></script></body></html>"
@@ -92,11 +92,16 @@ func NewPrismFile(f http.File) (pr *PrismFile) {
 		     suff=suff[1:]
 	     }
 	     tpre:=fmt.Sprintf(gpre,suff)
-
+	     /*ssarray:=strings.Split(string(bs),"\n")
+	     var  bb strings.Builder;
+	     for i,s := range ssarray {
+		     fmt.Fprintf(&bb,"<li id=\"L%d\"/>%s\n",i+1,s)
+	     }
+	     */
 	     ss:=tpre+string(bs)+gpost
 	pr=&PrismFile {
 		f: f,
-		prelen: len(tpre),
+		totallen: int64(len(ss)),
 		Reader: strings.NewReader(ss),
 	}
      }
@@ -115,17 +120,17 @@ func (pp *PrismFile) Readdir(n int)(fis []fs.FileInfo, err error) {
 }
 type  PrismFileInfo struct  {
 	fs.FileInfo
-	prelen int
+	totallen int64
 }
 func  (info PrismFileInfo) Name() string {
 	 return "tmp.html"
 }
 func  (info PrismFileInfo) Size() int64 {
-	return info.FileInfo.Size()+int64(info.prelen)+int64(len(gpost))
+	return info.totallen
 }
 func (pp *PrismFile) Stat()(fs.FileInfo, error) {
 	     fis,err:=pp.f.Stat()
-	     return  PrismFileInfo{FileInfo:fis, prelen:pp.prelen},err
+	     return  PrismFileInfo{FileInfo:fis, totallen:pp.totallen},err
 }
 func (pp PrismFile) Read(p []byte)(n int,err error) {
 	n,err=pp.Reader.Read(p)
