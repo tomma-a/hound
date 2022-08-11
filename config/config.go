@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"fmt"
 	"path/filepath"
 )
 
@@ -15,7 +16,9 @@ const (
 	defaultTitle                 = "Hound"
 	defaultVcs                   = "git"
 	defaultBaseUrl               = "{url}/blob/{rev}/{path}{anchor}"
+	defaultNonVcsBaseUrl	     = "/nonvcs/%s/{path}{anchor}"
 	defaultAnchor                = "#L{line}"
+	defaultNonVcsAnchor          = "#L{line}"
 	defaultHealthCheckURI        = "/healthz"
 )
 
@@ -92,7 +95,7 @@ func (r *Repo) VcsConfig() []byte {
 }
 
 // Populate missing config values with default values.
-func initRepo(r *Repo) {
+func initRepo(r *Repo,name string) {
 	if r.MsBetweenPolls == 0 {
 		r.MsBetweenPolls = defaultMsBetweenPoll
 	}
@@ -100,19 +103,33 @@ func initRepo(r *Repo) {
 	if r.Vcs == "" {
 		r.Vcs = defaultVcs
 	}
-
 	if r.UrlPattern == nil {
+		if r.Vcs=="nonvcs"  {
+		r.UrlPattern = &UrlPattern{
+			BaseUrl: fmt.Sprintf(defaultNonVcsBaseUrl,name),
+			Anchor:  defaultNonVcsAnchor,
+		}
+		} else {
 		r.UrlPattern = &UrlPattern{
 			BaseUrl: defaultBaseUrl,
 			Anchor:  defaultAnchor,
 		}
+		}
 	} else {
 		if r.UrlPattern.BaseUrl == "" {
-			r.UrlPattern.BaseUrl = defaultBaseUrl
+			if r.Vcs=="nonvcs" {
+				r.UrlPattern.BaseUrl = fmt.Sprintf(defaultNonVcsBaseUrl,name)
+			} else {
+				r.UrlPattern.BaseUrl = defaultBaseUrl
+		}
 		}
 
 		if r.UrlPattern.Anchor == "" {
-			r.UrlPattern.Anchor = defaultAnchor
+			if r.Vcs=="nonvcs" {
+				r.UrlPattern.Anchor = defaultNonVcsAnchor
+			} else {
+				r.UrlPattern.Anchor = defaultAnchor
+			}
 		}
 	}
 }
@@ -204,8 +221,8 @@ func (c *Config) LoadFromFile(filename string) error {
 		c.DbPath = path
 	}
 
-	for _, repo := range c.Repos {
-		initRepo(repo)
+	for name, repo := range c.Repos {
+		initRepo(repo,name)
 	}
 
 	return initConfig(c)
