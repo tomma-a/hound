@@ -92,13 +92,14 @@ func NewPrismFile(f http.File) (pr *PrismFile) {
 		     suff=suff[1:]
 	     }
 	     tpre:=fmt.Sprintf(gpre,suff)
+	     ss:=tpre+strings.ReplaceAll(strings.ReplaceAll(string(bs),"<","&lt;"),">","&gt;")+gpost
 	     /*ssarray:=strings.Split(string(bs),"\n")
 	     var  bb strings.Builder;
 	     for i,s := range ssarray {
 		     fmt.Fprintf(&bb,"<li id=\"L%d\"/>%s\n",i+1,s)
 	     }
 	     */
-	     ss:=tpre+string(bs)+gpost
+
 	pr=&PrismFile {
 		f: f,
 		totallen: int64(len(ss)),
