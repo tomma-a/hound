@@ -93,7 +93,7 @@ func NewPrismFile(f http.File) (pr *PrismFile) {
 	     }
 	     tpre:=fmt.Sprintf(gpre,suff)
 
-	     ss:=tpre+string(bs)+gpost
+	     ss:=tpre+strings.ReplaceAll(strings.ReplaceAll(string(bs),"<","&lt;"),">","&gt;")+gpost
 	pr=&PrismFile {
 		f: f,
 		prelen: len(tpre),
