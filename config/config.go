@@ -18,7 +18,7 @@ const (
 	defaultBaseUrl               = "{url}/blob/{rev}/{path}{anchor}"
 	defaultNonVcsBaseUrl	     = "/nonvcs/%s/{path}{anchor}"
 	defaultAnchor                = "#L{line}"
-	defaultNonVcsAnchor          = "#L{line}"
+	defaultNonVcsAnchor          = "#codeline.{line}"
 	defaultHealthCheckURI        = "/healthz"
 )
 
